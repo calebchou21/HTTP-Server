@@ -1,22 +1,22 @@
 #ifndef HTTP_SERVER_H
 #define HTTP_SERVER_H
 
-#include <string>
-
 class HttpServer 
 {
     public:
-        HttpServer(std::string ipAddress, int port);
+        HttpServer(int port);
         ~HttpServer();
 
-        void listen();
 
     private:
-        int m_socket;
-        std::string m_ipAddress;
+        int m_socketfd;
         int m_port;
         
-        void logMessage(const std::string &message);
-        void logError(const std::string &message);
+        void setupSocket();
+        void startListening();
+        
+        const char* socktypeToString(int socktype);
+        const char* addrfamilyToString(int addrfamily);
+        const char* protocolToString(int protocol);
 };
 #endif
