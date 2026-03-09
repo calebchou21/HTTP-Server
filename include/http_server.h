@@ -14,6 +14,7 @@ class HttpServer
         
         void setupSocket();
         void startListening();
+        void handleConnection(int connectionfd);
         
         const char* socktypeToString(int socktype);
         const char* addrfamilyToString(int addrfamily);

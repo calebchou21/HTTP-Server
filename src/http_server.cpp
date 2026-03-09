@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/socket.h>
+#include <sys/sendfile.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -9,8 +10,13 @@
 #include <system_error>
 #include <errno.h>
 #include <string.h>
+#include <sys/sendfile.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <unistd.h>
 
 #include "logger.h"
+#include "connection.h"
 #include "http_server.h"
 
 HttpServer::HttpServer(int port) 
@@ -22,6 +28,7 @@ HttpServer::HttpServer(int port)
 
 HttpServer::~HttpServer() 
 {
+    // TODO: Make sure this is called when we SIGINT
     close(m_socketfd);
 }
 
@@ -40,7 +47,7 @@ void HttpServer::setupSocket()
 
     for (p = res; p != NULL; p = p->ai_next) {
         if ((m_socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            logger::logError("Failed to create socket - ", strerror(errno));
+            logger::logError("Failed to create socket: ", strerror(errno));
             continue;
         }
         
@@ -50,7 +57,7 @@ void HttpServer::setupSocket()
 
         if (bind(m_socketfd, p->ai_addr, p->ai_addrlen) == -1) {
             close(m_socketfd);
-            logger::logError("Failed to bind socket - ", strerror(errno));
+            logger::logError("Failed to bind socket: ", strerror(errno));
             continue;
         }
 
@@ -96,22 +103,95 @@ void HttpServer::startListening()
         struct sockaddr_storage their_addr;
         socklen_t addr_size = sizeof their_addr;
         
-        int new_fd;
-        new_fd = accept(m_socketfd, (struct sockaddr *)&their_addr, &addr_size);
-
-        if (new_fd == -1) {
-            logger::logError("Failed to accept incoming connection - ", strerror(errno));
+        int connectionfd;
+        connectionfd = accept(m_socketfd, (struct sockaddr *)&their_addr, &addr_size);
+        if (connectionfd == -1) {
+            logger::logError("Failed to accept incoming connection: ", strerror(errno));
+            continue;
         }
-
-        char buffer[4096];
-        int bytes_read = recv(new_fd, buffer, sizeof buffer, 0);
-        if (bytes_read == -1) {
-            logger::logError("Failed to receive byte - ", strerror(errno));
-        }
-        logger::logMessage("Client Connected!");
-        logger::logMessage("Received ", bytes_read, " bytes");
-        close(new_fd);
+        
+        Connection connection(connectionfd);
+        connection.handle();
     }
+}
+
+// FIXME: Delete this eventually
+void HttpServer::handleConnection(int connectionfd)
+{
+    logger::logMessage("Client Connected!");
+    
+    std::string request;
+    char buffer[4096];
+    int headerSearchPos = 0;
+
+    do {
+        int bytes_read = recv(connectionfd, buffer, sizeof buffer, 0);
+        logger::logMessage("recv'd ", bytes_read, " bytes!");
+        
+        if (bytes_read == 0) {
+            logger::logMessage("Connection closed by peer");
+            break;
+        }
+
+        if (bytes_read <= 0) {
+            logger::logError("recv failed:", strerror(errno));
+            break;
+        }
+
+        request.append(buffer, bytes_read);
+        
+        size_t header_end = request.find("\r\n\r\n", headerSearchPos);
+        if (header_end != std::string::npos) {
+            // We have headers! This is the entire request in HTTP/0.9
+            logger::logMessage(request);
+            std::string path = request.substr(4);
+            size_t path_end = path.find(" ");
+            if (path_end == std::string::npos) {
+                logger::logError("Failed to identify path to resource");
+                break;
+            }
+            
+            path = path.substr(0, path_end);
+
+            if (path == "/") {
+                path = "/index.html";
+            }
+            
+
+            std::string pathToResource = "website" + path;
+            
+            // TODO: Open file, read data into buffer, transmit chunks of data to client, close connection
+
+            std::uintmax_t fileSize = std::filesystem::file_size(pathToResource);
+
+            int filefd = open(pathToResource.c_str(), O_RDONLY);
+            if (filefd == -1) {
+                logger::logError("Failed to open file");
+                return;
+            }
+
+            ssize_t totalSent = 0;
+            off_t offset = 0;
+            
+            while (totalSent < fileSize) {
+                int sent = sendfile(connectionfd, filefd, &offset, fileSize - totalSent);
+
+                if (sent == -1) {
+                    logger::logError("Send failed");
+                    return;
+                }
+
+                totalSent += sent;
+            }
+
+            logger::logMessage(path);
+            return;
+        }
+
+        headerSearchPos += bytes_read;
+    } while (request.size() < 16384); // 16KB limit
+
+    close(connectionfd);
 }
 
 const char* HttpServer::socktypeToString(int socktype)
