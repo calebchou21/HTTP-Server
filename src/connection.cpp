@@ -87,18 +87,9 @@ HttpResponse Connection::processRequest(const HttpRequest &request) {
             }
         } else {
             response.status = HttpStatus::OK;
+            
         }
     }
-}
-
-bool Connection::isModifiedSince(const std::filesystem::path &path, const std::string &headerDate) {
-    auto lastWrite = std::filesystem::last_write_time(path);
-    auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-        lastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
-    std::time_t fileTime = std::chrono::system_clock::to_time_t(sctp);
-
-    std::time_t headerTime = HttpParser::parseHttpDate(headerDate);
-    return fileTime > headerTime;
 }
 
 //TODO: This should be called something like "format response"
@@ -106,17 +97,5 @@ std::string Connection::formatResponse(const HttpResponse &response) {
     std::string builtResponse;
 }
 
-/**
- * Determines if a path is "valid" such that it does not contain any relative
- * components. It does NOT determine if a resource actually exists at the requested path.
- */
-bool Connection::isValidPath(const std::filesystem::path &path) {
-    for (const auto& component : path) {
-        if (component == "." || component == "..") {
-            return false;
-        }
-    }
-    return true;
-}
 
 bool writeToSocket() {}

@@ -189,3 +189,16 @@ time_t HttpParser::parseHttpDate(const std::string& dateStr) {
     ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
     return timegm(&tm);
 }
+
+/**
+ * Determines if a path is "valid" such that it does not contain any relative
+ * components. It does NOT determine if a resource actually exists at the requested path.
+ */
+bool HttpParser::isValidPath(const std::filesystem::path &path) {
+    for (const auto& component : path) {
+        if (component == "." || component == "..") {
+            return false;
+        }
+    }
+    return true;
+}

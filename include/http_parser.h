@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "request.h"
 
@@ -16,6 +17,7 @@ class HttpParser {
         HttpRequest getRequest();
 
         static time_t parseHttpDate(const std::string &dateStr);
+        static bool isValidPath(const std::filesystem::path &path);
 
     private:
         enum class ParseState {

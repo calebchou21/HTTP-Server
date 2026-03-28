@@ -26,7 +26,6 @@ private:
     bool readFromSocket();
     HttpResponse processRequest(const HttpRequest &request);
     std::string formatResponse(const HttpResponse &response);
-    bool isValidPath(const std::filesystem::path &path);
     bool writeToSocket();
 };
 #endif
