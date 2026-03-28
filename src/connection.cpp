@@ -43,7 +43,11 @@ bool Connection::readFromSocket() {
         }
         
         std::string chunk(buffer, bytesRead);
-        m_parser.feed(chunk);
+        if (!m_parser.feed(chunk)) {
+            logger::logError("An error occured while parsing request");
+            return false;
+        }
+
         m_requestSize += bytesRead;
         
         if (m_requestSize > 16384) {

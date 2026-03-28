@@ -27,11 +27,18 @@ class HttpParser {
         ParseState m_state = ParseState::RequestLine;
         std::string m_buffer;
         HttpRequest m_request;
+        int m_startParseIndex = 0;
 
         bool parseRequestLine();
+        bool parseHeader(const std::string &header);
+        bool parseBody();
         bool isValidPath(const std::filesystem::path &path);
 
         HttpRequestMethod strToRequestMethod(const std::string &str);
         std::vector<std::string> splitBySpace(std::string &str);
+        
+        std::string methodToString(HttpRequestMethod method); 
+        void logRequestLine();
+        void logHeaders();
 };
 #endif
