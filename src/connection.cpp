@@ -26,6 +26,7 @@ bool Connection::readFromSocket() {
     
     while (true) {
         if (m_parser.isComplete()) {
+            processRequest(m_parser.getRequest());
             return true;
         }
 
@@ -55,6 +56,67 @@ bool Connection::readFromSocket() {
             return false;
         }
     }
+}
+
+HttpResponse Connection::processRequest(const HttpRequest &request) {
+    HttpResponse response;
+    std::filesystem::path path = std::filesystem::path(SERVE_FROM) / request.path;
+    if (request.method == HttpRequestMethod::GET) {
+        bool pathIsValid = isValidPath(path);
+
+        if (!pathIsValid) {
+            response.status = HttpStatus::FORBIDDEN; 
+            response.body = "Forbidden";
+            response.headers["Content-Length"] = std::to_string(response.body.size());
+            return response;
+        }
+
+        if (!std::filesystem::exists(path)) {
+            response.status = HttpStatus::NOT_FOUND;
+            response.body = "Not Found";
+            response.headers["Content-Length"] = std::to_string(response.body.size());
+            return response;
+        }
+        
+        auto it = request.headers.find("If-Modified-Since");
+        if (it != request.headers.end()) {
+            if (!isModifiedSince(path, it->second)) {
+                response.status = HttpStatus::NOT_MODIFIED;
+                response.headers["Content-Length"] = "0";
+                return response;
+            }
+        } else {
+            response.status = HttpStatus::OK;
+        }
+    }
+}
+
+bool Connection::isModifiedSince(const std::filesystem::path &path, const std::string &headerDate) {
+    auto lastWrite = std::filesystem::last_write_time(path);
+    auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+        lastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+    std::time_t fileTime = std::chrono::system_clock::to_time_t(sctp);
+
+    std::time_t headerTime = HttpParser::parseHttpDate(headerDate);
+    return fileTime > headerTime;
+}
+
+//TODO: This should be called something like "format response"
+std::string Connection::formatResponse(const HttpResponse &response) {
+    std::string builtResponse;
+}
+
+/**
+ * Determines if a path is "valid" such that it does not contain any relative
+ * components. It does NOT determine if a resource actually exists at the requested path.
+ */
+bool Connection::isValidPath(const std::filesystem::path &path) {
+    for (const auto& component : path) {
+        if (component == "." || component == "..") {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool writeToSocket() {}

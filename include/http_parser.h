@@ -2,7 +2,6 @@
 #define HTTP_PARSER_H
 
 #include <string>
-#include <filesystem>
 #include <vector>
 
 #include "request.h"
@@ -15,6 +14,8 @@ class HttpParser {
         bool feed(std::string &data);
         bool isComplete();
         HttpRequest getRequest();
+
+        static time_t parseHttpDate(const std::string &dateStr);
 
     private:
         enum class ParseState {
@@ -31,8 +32,6 @@ class HttpParser {
 
         bool parseRequestLine();
         bool parseHeader(const std::string &header);
-        bool isValidPath(const std::filesystem::path &path);
-
         HttpRequestMethod strToRequestMethod(const std::string &str);
         std::vector<std::string> splitBySpace(std::string &str);
         
