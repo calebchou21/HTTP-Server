@@ -14,5 +14,7 @@ class FileService {
     private:
         static bool isModifiedSince(const std::filesystem::path &path, const std::string &headerDate);
         static HttpResponse buildResponse(HttpStatus status, std::string body = "");
+        static std::string getMimeType(const std::filesystem::path &path);
+        static std::string getFileContent(const std::filesystem::path &path);
 };
 #endif

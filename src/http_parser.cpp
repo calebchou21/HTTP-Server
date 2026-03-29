@@ -159,7 +159,7 @@ void HttpParser::logRequestLine() {
 
 void HttpParser::logHeaders() {
     std::string headers;
-    for (const auto& pair :m_request.headers) {
+    for (const auto& pair : m_request.headers) {
         headers += "\t" + pair.first + ": " + pair.second + "\n";
     }
     
