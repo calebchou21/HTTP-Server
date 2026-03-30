@@ -63,7 +63,10 @@ bool Connection::readFromSocket() {
 
 HttpResponse Connection::processRequest(const HttpRequest &request) {
     HttpResponse response;
-    std::filesystem::path path = std::filesystem::path(SERVE_FROM) / request.path;
+    std::filesystem::path path =
+        std::filesystem::path(SERVE_FROM) /
+        request.path.substr(1);
+    logger::logMessage(path);
     if (request.method == HttpRequestMethod::GET) {
         return FileService::serveFile(request, path);
     }
@@ -71,5 +74,21 @@ HttpResponse Connection::processRequest(const HttpRequest &request) {
 }
 
 bool Connection::writeToSocket(const std::string &serializedResponse) {
+    size_t totalSent = 0;
+    const char *ptr = serializedResponse.c_str();
+    size_t remaining = serializedResponse.size();
 
+    while (totalSent < serializedResponse.size()) {
+        ssize_t sent = send(m_fd, ptr + totalSent, remaining, 0);
+
+        if (sent == -1) {
+            logger::logError("Failed to send message to client");
+            return false;
+        }
+
+        totalSent += sent;
+        remaining -= sent;
+    }
+
+    return true;
 }
