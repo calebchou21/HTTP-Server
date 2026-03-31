@@ -7,7 +7,7 @@ HttpResponse FileService::serveFile(const HttpRequest &request, const std::files
     
     if (!pathIsValid) {
         return buildResponse(HttpStatus::FORBIDDEN, "Forbidden");
-    } 
+    }
 
     if (!std::filesystem::exists(path)) {
         return buildResponse(HttpStatus::NOT_FOUND, "Not Found");

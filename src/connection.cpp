@@ -63,10 +63,13 @@ bool Connection::readFromSocket() {
 
 HttpResponse Connection::processRequest(const HttpRequest &request) {
     HttpResponse response;
-    std::filesystem::path path =
-        std::filesystem::path(SERVE_FROM) /
-        request.path.substr(1);
-    logger::logMessage(path);
+    std::filesystem::path path = std::filesystem::path(SERVE_FROM) /
+                                    request.path.substr(1);
+
+    if (std::filesystem::is_directory(path)) {
+        path /= "index.html";
+    }
+
     if (request.method == HttpRequestMethod::GET) {
         return FileService::serveFile(request, path);
     }
