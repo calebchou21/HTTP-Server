@@ -3,7 +3,8 @@
 
 std::string ResponseSerializer::serializeResponse(const HttpResponse &response) {
     std::ostringstream buffer;
-    buffer << "HTTP/1.1 " << static_cast<int>(response.status)
+    buffer << "HTTP/" << response.versionMajor << "." 
+        << response.versionMinor << " " << static_cast<int>(response.status)
         << " " << statusMethodToPhrase(response.status) << "\r\n"
         << serializeHeaders(response) << "\r\n" << response.body;
     return buffer.str();

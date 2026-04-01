@@ -1,28 +1,38 @@
 #include <fstream>
+
+#include "response.h"
+#include "http_utils.h"
 #include "file_service.h"
-#include "http_parser.h"
 
 HttpResponse FileService::serveFile(const HttpRequest &request, const std::filesystem::path &path) {
-    bool pathIsValid = HttpParser::isValidPath(path); 
+    bool pathIsValid = isValidPath(path); 
     
     if (!pathIsValid) {
-        return buildResponse(HttpStatus::FORBIDDEN, "Forbidden");
+        return HttpResponse::create(HttpStatus::FORBIDDEN, "Forbidden");
     }
 
     if (!std::filesystem::exists(path)) {
-        return buildResponse(HttpStatus::NOT_FOUND, "Not Found");
+        return HttpResponse::create(HttpStatus::NOT_FOUND, "Not Found");
     }
+
+    std::time_t lastModified = getLastWriteTime(path);
+    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::string lastModifiedStr = HttpUtils::formatHttpDate(lastModified);
 
     auto it = request.headers.find("If-Modified-Since");
     if (it != request.headers.end()) {
-        if (!isModifiedSince(path, it->second)) {
-            return buildResponse(HttpStatus::NOT_MODIFIED);
+        if (!isNotModifiedSince(path, it->second)) {
+            HttpResponse response = HttpResponse::create(HttpStatus::NOT_MODIFIED);
+            response.headers["Last-Modified"] = lastModifiedStr;
+            return response;
         }
     }
 
     std::string body = getFileContent(path);
-    HttpResponse response = buildResponse(HttpStatus::OK, body);
+    HttpResponse response = HttpResponse::create(HttpStatus::OK, body);
     response.headers["Content-Type"] = getMimeType(path);
+    response.headers["Last-Modified"] = lastModifiedStr;
+
     return response;
 }
 
@@ -63,25 +73,29 @@ std::string FileService::getMimeType(const std::filesystem::path &path) {
     return "application/octet-stream";
 }
 
-bool FileService::isModifiedSince(const std::filesystem::path &path, const std::string &headerDate) {
+bool FileService::isNotModifiedSince(const std::filesystem::path &path, const std::string &headerDate) {
+    std::time_t fileTime = getLastWriteTime(path);
+    std::time_t headerTime = HttpUtils::parseHttpDate(headerDate);
+    return fileTime > headerTime;
+}
+
+std::time_t FileService::getLastWriteTime(const std::filesystem::path &path) {
     auto lastWrite = std::filesystem::last_write_time(path);
     auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
         lastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
     std::time_t fileTime = std::chrono::system_clock::to_time_t(sctp);
-
-    std::time_t headerTime = HttpParser::parseHttpDate(headerDate);
-    return fileTime > headerTime;
+    return fileTime;
 }
 
-HttpResponse FileService::buildResponse(HttpStatus status, std::string body) {
-    HttpResponse response;
-    response.status = status;
-    if (!body.empty()) {
-        response.body = body;
-        response.headers["Content-Length"] = std::to_string(response.body.size());
-    } else {
-        response.headers["Content-Length"] = "0";
+/**
+ * Determines if a path is "valid" such that it does not contain any relative
+ * components. It does NOT determine if a resource actually exists at the requested path.
+ */
+bool FileService::isValidPath(const std::filesystem::path &path) {
+    for (const auto& component : path) {
+        if (component == "." || component == "..") {
+            return false;
+        }
     }
-    response.headers["Content-Type"] = "text/plain"; // Default type
-    return response;
+    return true;
 }

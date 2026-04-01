@@ -7,6 +7,7 @@
 enum class HttpRequestMethod {
     GET,
     POST,
+    HEAD,
     UNKNOWN,
 };
 

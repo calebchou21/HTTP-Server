@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 
 #include "connection.h"
+#include "response.h"
 #include "response_serializer.h"
 #include "file_service.h"
 #include "logger.h"
@@ -70,10 +71,21 @@ HttpResponse Connection::processRequest(const HttpRequest &request) {
         path /= "index.html";
     }
 
+    switch (request.method) {
+        case HttpRequestMethod::GET:
+        case HttpRequestMethod::HEAD:
+            return FileService::serveFile(request, path);
+        case HttpRequestMethod::POST:
+            logger::logMessage("I need to implement posts!");
+        default:
+            HttpResponse response = HttpResponse::create(HttpStatus::NOT_IMPLEMENTED);
+            response.headers["Allow"] = "GET, HEAD, POST";
+            return response;
+    }
+
     if (request.method == HttpRequestMethod::GET) {
         return FileService::serveFile(request, path);
     }
-    // FIXME: POST + HEAD requests 
 }
 
 bool Connection::writeToSocket(const std::string &serializedResponse) {
@@ -95,3 +107,4 @@ bool Connection::writeToSocket(const std::string &serializedResponse) {
 
     return true;
 }
+

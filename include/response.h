@@ -31,9 +31,12 @@ enum class HttpStatus {
 };
 
 struct HttpResponse {
+    int versionMajor;
+    int versionMinor;
     HttpStatus status;
     std::unordered_map<std::string, std::string> headers;
     std::string body;
-};
 
+    static HttpResponse create(HttpStatus status, std::string body = "");
+};
 #endif
