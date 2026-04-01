@@ -18,21 +18,24 @@ HttpResponse FileService::serveFile(const HttpRequest &request, const std::files
     std::time_t lastModified = getLastWriteTime(path);
     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::string lastModifiedStr = HttpUtils::formatHttpDate(lastModified);
-
+    
+    HttpResponse response;
     auto it = request.headers.find("If-Modified-Since");
-    if (it != request.headers.end()) {
+    if (it != request.headers.end() && request.method != HttpRequestMethod::HEAD) {
         if (!isNotModifiedSince(path, it->second)) {
-            HttpResponse response = HttpResponse::create(HttpStatus::NOT_MODIFIED);
-            response.headers["Last-Modified"] = lastModifiedStr;
-            return response;
+            response = HttpResponse::create(HttpStatus::NOT_MODIFIED);
         }
+    } else {
+        std::string body = getFileContent(path);
+        HttpResponse response = HttpResponse::create(HttpStatus::OK, body);
+    }
+    
+    if (request.method == HttpRequestMethod::HEAD) {
+        response.body = "";
     }
 
-    std::string body = getFileContent(path);
-    HttpResponse response = HttpResponse::create(HttpStatus::OK, body);
     response.headers["Content-Type"] = getMimeType(path);
     response.headers["Last-Modified"] = lastModifiedStr;
-
     return response;
 }
 
