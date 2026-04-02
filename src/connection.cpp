@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string.h>
+#include <fstream>
 #include <sys/socket.h>
 
 #include "connection.h"
@@ -89,11 +90,46 @@ HttpResponse Connection::processRequest(const HttpRequest &request) {
 }
 
 HttpResponse Connection::handlePost(const HttpRequest &request) {
-    if (request.path == "/echo") {
-        logger::logMessage("Posted: ", request.body);
+    if (request.path != "/post_to_this.html") {
+        return HttpResponse::create(HttpStatus::NOT_IMPLEMENTED); // 405 not defined in HTTP/1.0 spec
     }
     
-    return HttpResponse::create(HttpStatus::OK);
+    auto it = request.headers.find("Content-Length");
+    if (it == request.headers.end()) {
+        return HttpResponse::create(HttpStatus::BAD_REQUEST); 
+    }
+    
+    int bodyLen;
+    try {
+        bodyLen = std::stoi(it->second);
+    } catch (const std::exception &e) {
+        // If length is not parsable to int for some reason, return 400
+        return HttpResponse::create(HttpStatus::BAD_REQUEST);
+    }
+
+    if (request.body.size() != static_cast<size_t>(bodyLen)) {
+        return HttpResponse::create(HttpStatus::BAD_REQUEST);
+    }
+    
+    std::filesystem::path postToPath = std::filesystem::path(SERVE_FROM) / "post_to_this.html";
+    std::ofstream file(postToPath); // overwrite mode
+    if (!file) {
+        return HttpResponse::create(HttpStatus::INTERNAL_SERVER_ERROR);
+    }
+    file << request.body;
+    file.close();
+    
+    std::string body = R"(
+        <html>
+          <body>
+            <h1>201 Created</h1>
+            <a href="./post_to_this.html">Click here!</a>
+          </body>
+        </html>
+        )";
+    HttpResponse response = HttpResponse::create(HttpStatus::CREATED, body);
+    response.headers["Content-Type"] = "text/html";
+    return response;
 }
 
 bool Connection::writeToSocket(const std::string &serializedResponse) {
