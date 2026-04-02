@@ -1,14 +1,23 @@
-body {
+html, body {
     background-image: url("imgs/space.png");
     background-repeat: repeat;
     color: white;
-    margin: 0; /* important: remove default browser margin */
+    background-color: black;
+    margin: 0;
+}
+
+a {
+    color: #6fff9c;
+}
+
+p {
+    font-size: 1.3rem;
 }
 
 .container {
     display: flex;
     justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 .centered {
