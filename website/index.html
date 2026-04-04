@@ -7,7 +7,7 @@
     <body>
         <div class="container">
             <div class="box">
-                <h1 class="centered">Hello, World!</h1>
+                <h1 class="centered">My Awesome Website</h1>
 
                 <p>
                     This website is served from my 
@@ -20,7 +20,7 @@
                 </p>
 
                 <p>
-                    But there are a lot of things that I'm not implementing to spec. For example, HTTP 1.0 compliant servers should also understand HTTP 0.9 style requests. And my server doesn't. I'm also not covering all headers and such. So it's a pretty minimally working HTTP server.
+                    But there are a lot of things that I'm not implementing to spec. For example, HTTP 1.0 compliant servers should also understand HTTP 0.9 style requests. And my server doesn't. I also wasn't super dilligent about making sure that every response behaves exactly as specified so I'm sure there are some headers that I'm not using properly and such. 
                 </p>
 
                 <div class="skel">
@@ -30,10 +30,41 @@
                 </div>
                 
                 <div class="postoffice">
-                    <textarea rows="10" cols="40"> Try writing something awesome in here</textarea>
-                    <button> And then click on this button </button>
+                    <form id="postForm" action="/post_to_this.html" method="POST">
+                        <textarea name="message" rows="10" cols="40">Try writing something awesome in here</textarea>
+
+                        <button type="submit">And then click on this button</button>
+                    </form>
+
+                    <a href="./post_to_this.html" target="_blank">Now click here!</a>
                 </div>
+
+                <p> POSTs just overwrite this html page on my web server </p>
+
+                <img src="imgs/lion.jpeg" alt="Amazing lion photo." id="lion"/>
             </div>
         </div>
+
+        <script id="h8v2b9">
+        document.getElementById("postForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch(this.action, {
+                    method: "POST",
+                    body: new URLSearchParams(formData)
+                });
+
+                const text = await response.text();
+
+                console.log("Server response:", text);
+
+            } catch (err) {
+                console.error("Error:", err);
+            }
+        });
+        </script>
     </body>
 </html>

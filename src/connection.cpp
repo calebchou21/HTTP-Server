@@ -87,6 +87,8 @@ HttpResponse Connection::processRequest(const HttpRequest &request) {
     if (request.method == HttpRequestMethod::GET) {
         return FileService::serveFile(request, path);
     }
+
+    return HttpResponse::create(HttpStatus::BAD_REQUEST);
 }
 
 HttpResponse Connection::handlePost(const HttpRequest &request) {
@@ -123,7 +125,7 @@ HttpResponse Connection::handlePost(const HttpRequest &request) {
         <html>
           <body>
             <h1>201 Created</h1>
-            <a href="./post_to_this.html">Click here!</a>
+            <a href="./post_to_this.html" target=_blank>Click here!</a>
           </body>
         </html>
         )";
